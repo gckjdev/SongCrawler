@@ -5,46 +5,55 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.bson.types.ObjectId;
 
 import com.orange.common.log.ServerLog;
 import com.orange.game.model.dao.song.Song;
+import com.orange.game.model.dao.song.SongCategory;
+import com.orange.game.model.manager.song.SongCategoryManager;
 import com.orange.game.model.manager.song.SongManager;
 import com.orange.game.model.manager.song.SongManager.SongObjectIdMap;
 import com.orange.songcrawler.service.CrawlPolicy.NameCapital;
 import com.orange.songcrawler.util.FileHierarchyBuilder.SingerIndexLine;
 import com.orange.songcrawler.util.FileHierarchyBuilder.SongIndexLine;
 
-public class DBWriter {
+public class DBAccessProxy {
 
 	private static final SongManager songManager = SongManager.getInstance();
+	private static final SongCategoryManager  songCategoryManager = SongCategoryManager.getInstance();
+	private static final FileHierarchyBuilder fileHierarchyBulder = FileHierarchyBuilder.getInstance();
 	
     // 用于记录写song表时出错的条目,　以便根据这些条目,重新尝试写入:
 	// 如果在解析singer_index就出错,　则条目格式为:　name capital :  :
 	// 如果在写入某个singer时出错,　则条目格式为:　　 name capital : singer :
 	// 如果在写入某首歌时出错,　则条目格式为:　       name capital : singer : song URL
 	private static List<String> errorWritingSongCollection = new ArrayList<>();
-	private static final String ERROR_WRITING_SONGS_LOG = FileHierarchyBuilder.getErrorWritingSongsLog();
+	private static final String ERROR_WRITING_SONGS_LOG = fileHierarchyBulder.getErrorWritingSongsLog();
 	
 	// 用于记录写song_index表时出错的条目,　以便重新写入
 	private static List<String> errorWritingSongIndexCollection = new ArrayList<>();
-	private static final String ERROR_WRITING_SONG_INDEX_LOG = FileHierarchyBuilder.getErrorWritingSongIndexLog();
+	private static final String ERROR_WRITING_SONG_INDEX_LOG = fileHierarchyBulder.getErrorWritingSongIndexLog();
 	
 	// 用于记录写singer表时出错的条目,　以便重新写入
 	private static List<String> errorWritingSingerCollection = new ArrayList<>();
-	private static final String ERROR_WRITING_SINGERS_LOG = FileHierarchyBuilder.getErrorWritingSingersLog();
+	private static final String ERROR_WRITING_SINGERS_LOG = fileHierarchyBulder.getErrorWritingSingersLog();
 		
+	private static final DBAccessProxy  oneInstance = new DBAccessProxy();
+	private DBAccessProxy() {}
+	public static DBAccessProxy getInstance() {
+		return oneInstance;
+	}
+	
 
-
-	public static void writeAllSongsInfoToDB() throws IOException {
+	public void writeAllSongsInfoToDB() throws IOException {
 		writeAllsongsCollections();
 	}
 
-	
 
-	private static void writeAllsongsCollections() throws IOException {
+	private void writeAllsongsCollections() throws IOException {
 
 		for (NameCapital nc : NameCapital.values()) {
 			writeSongCollectionForNameCapital(nc.getCapital());
@@ -57,9 +66,9 @@ public class DBWriter {
 
 	
 	@SuppressWarnings({ "unchecked" })
-	private static void writeSongCollectionForNameCapital(String nameCapital) {
+	private void writeSongCollectionForNameCapital(String nameCapital) {
 		
-		List<String> singerIndexLines = FileHierarchyBuilder.parseSingerIndexFile(nameCapital);
+		List<String> singerIndexLines = fileHierarchyBulder.parseSingerIndexFile(nameCapital);
 		if (singerIndexLines == null) {
 			ServerLog.warn(0,"Failed Writing song collection for name capital: "+ nameCapital);
 			errorWritingSongCollection.add(nameCapital + " : : ");
@@ -71,7 +80,7 @@ public class DBWriter {
 			
 			// 写入该歌手的所有歌曲信息到数据库中
 			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<>();
-			String songIndexFile = FileHierarchyBuilder.getSingerSongIndexFileName(singerName, nameCapital);
+			String songIndexFile = fileHierarchyBulder.getSingerSongIndexFileName(singerName, nameCapital);
 			List<String> songIndexLines;
 			try {
 				songIndexLines = FileUtils.readLines(new File(songIndexFile),"UTF-8");
@@ -85,7 +94,7 @@ public class DBWriter {
 				String songName = songIndexLine.getSongName();
 				String songURL = songIndexLine.getSongURL();
 				String songAlbum = songIndexLine.getSongAlbum();
-				String lyricPath = FileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName);
+				String lyricPath = fileHierarchyBulder.getLyricFileName(singerName, nameCapital, songName);
 				Song song = new Song(songName, songURL, songAlbum, singerName, lyricPath);
 
 				ServerLog.info(0, "* 正在写入歌曲到数据库中: " + songName);
@@ -115,6 +124,24 @@ public class DBWriter {
 				errorWritingSingerCollection.add(nameCapital + ":" + singerName + "\n" + allSongsObjectIds.toString());
 			}
 		}
+	}
+
+
+	public void updateCategoryInfoForSong(Song song, String category, String subcategory) {
+		songManager.updateCategoryInfoForSong(song, category, subcategory);
+	}
+
+
+	public List<Song> findSongBySongNameAndSinger(String songName, String singerName) {
+		return songManager.findSongBySongNameAndSinger(songName, singerName);
+	}
+
+
+	public void writeSongCategoryCollection(String category,String subcategory, 
+		      Map<String, String> songsInThisCategory) {
+		
+		SongCategory songCategory = new SongCategory(category, subcategory, songsInThisCategory);
+		songCategoryManager.writeSongCategoryCollection(songCategory);
 	}
 
 }

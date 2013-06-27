@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import org.htmlparser.util.ParserException;
 
-import com.orange.common.log.ServerLog;
 import com.orange.songcrawler.service.CrawlPolicy;
 import com.orange.songcrawler.service.CrawlPolicy.NameCapital;
 import com.orange.songcrawler.service.SongCrawler;
@@ -12,14 +11,17 @@ import com.orange.songcrawler.service.SongCrawler;
 
 public class OneShotCrawler {
 	
-	public static void crawlTheWholeWorld(String host) throws ParserException, IOException {
+	private static final OneShotCrawler crawler = new OneShotCrawler();
+	private OneShotCrawler() {}
+	public static OneShotCrawler getInstance() {
+		return crawler;
+	}
+	
+	
+	public void crawlTheWholeWorld(String host) throws ParserException, IOException {
 		
 		// 由自己所处哪台机器决定抓取什么首字母范围的歌手
       	NameCapital[] nameCapitalRange = CrawlPolicy.dispatchNameCapitalRange(host);
-      	if (nameCapitalRange == null){
-      		ServerLog.info(0, "<crawlTheWholdWorld> Bad range, the OneShotCralwer halts!!!");
-      		return;
-      	}
 		
       	SongCrawler songCrawler = SongCrawler.getInstance();
       	

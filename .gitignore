@@ -4,5 +4,7 @@
 /*.DS_Store
 /logs/
 deploy.sh
+build.sh
 /.settings/
 /bin
+*log*

@@ -64,7 +64,9 @@ public class CrawlPolicy {
 				nameCapitalRange[1] = NameCapital.Z;
 				break;
 			default:
-				return null;
+				nameCapitalRange[0] = NameCapital.C;
+				nameCapitalRange[1] = NameCapital.C;
+				break;
 			}
 		} else {
 			/* Just for test */

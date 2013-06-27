@@ -51,9 +51,13 @@ public class LyricSearcher {
 			body = downloadURLwithCookie(getUrl);
 		} catch (HttpException e) {
 			e.printStackTrace();
+			return null;
 		} catch (IOException e) {
 			e.printStackTrace();
+			return null;
 		}
+		
+		
         String lyric = extractLyricFromResponseBody(body, keyWord);
 				
         return lyric;

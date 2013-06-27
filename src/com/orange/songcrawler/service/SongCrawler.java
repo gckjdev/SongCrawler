@@ -6,9 +6,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import net.sf.json.JSONObject;
 
@@ -32,23 +35,25 @@ import com.orange.songcrawler.service.LyricSearcher.SearchSite;
 import com.orange.songcrawler.util.FileHierarchyBuilder;
 import com.orange.songcrawler.util.FileHierarchyBuilder.SingerIndexLine;
 import com.orange.songcrawler.util.FileHierarchyBuilder.SongIndexLine;
+import com.orange.songcrawler.util.PropertyConfiger;
 
 public class SongCrawler {
 
 	private static final int SONGS_PER_PAGE = 20; // 百度音乐歌手歌曲页面是每20首一个分页
 	private static final String BAIDU_MUSIC_HOME_PAGE = "http://music.baidu.com/artist"; 
 	
+	private static final FileHierarchyBuilder fileHierarchyBuilder = FileHierarchyBuilder.getInstance();
 	
 	// 记录*出错时正在抓取哪个字母的歌手URL*, 以便从此处断点续爬
-	private static final String ERROR_CRAWLING_SINGERS_URL_LOG = FileHierarchyBuilder.getErrorCrawlingSingersURLLog();
+	private static final String ERROR_CRAWLING_SINGERS_URL_LOG = fileHierarchyBuilder.getErrorCrawlingSingersURLLog();
 	
 	// 记录*所有抓取歌曲URL失败的歌手URL*, 以便重新抓取
 	private final List<String> errorCrawlingURLs = new ArrayList<String>();
-	private static final String ERROR_CRAWLING_SONGS_URL_LOG = FileHierarchyBuilder.getErrorCrawlingSongsURLLog();
+	private static final String ERROR_CRAWLING_SONGS_URL_LOG = fileHierarchyBuilder.getErrorCrawlingSongsURLLog();
 	
 	// 记录*所有抓取失败的歌曲URL*, 以便重新抓取
 	private final List<String> errorCrawlingLyrics = new ArrayList<String>();
-	private static final String ERROR_CRAWLING_SONGS_LYRICS_LOG = FileHierarchyBuilder.getErrorCrawlingLyricsLog();
+	private static final String ERROR_CRAWLING_SONGS_LYRICS_LOG = fileHierarchyBuilder.getErrorCrawlingLyricsLog();
 	
 	private final ExecutorService downloader =  Executors.newCachedThreadPool();
 	
@@ -64,6 +69,23 @@ public class SongCrawler {
 		File errorCrawlingSingersURLLog = new File(ERROR_CRAWLING_SINGERS_URL_LOG);
 		
 		try {
+			// 如果errorCrawlingSingerURLLog文件存在，则读取它
+			// 然后从上次失败的首字母开始抓取
+			String lastErrorCapital = null;
+			if ( errorCrawlingSingersURLLog.canRead()) {
+		    	try {
+					lastErrorCapital = FileUtils.readFileToString(errorCrawlingSingersURLLog);
+					if (lastErrorCapital == null || lastErrorCapital.equals("")
+							|| ! Character.isUpperCase(lastErrorCapital.charAt(0)))
+						// 如果不是合法的Ａ——Ｚ，就默认从头开始
+						lastErrorCapital = nameCapitalRange[0].getCapital();
+				} catch (IOException e) {
+					// 如果读失败，就默认从头开始
+					lastErrorCapital = nameCapitalRange[0].getCapital();
+				}
+			}
+			
+			
 		    /* --- 解析百度音乐首页，抽取歌手信息开始 --- */
 			
 			Parser allSingersParser = new Parser(BAIDU_MUSIC_HOME_PAGE);
@@ -85,21 +107,6 @@ public class SongCrawler {
 			
 		    /* --- 解析百度音乐首页，抽取歌手信息结束 --- */
 			
-			
-			// 如果errorCrawlingSingerURLLog文件存在，则读取它
-			// 然后从上次失败的首字母开始抓取
-			String lastErrorCapital = null;
-			if ( errorCrawlingSingersURLLog.canRead()) {
-		    	try {
-					lastErrorCapital = FileUtils.readFileToString(errorCrawlingSingersURLLog);
-					if (! Character.isUpperCase(lastErrorCapital.charAt(0)))
-						// 如果不是合法的Ａ——Ｚ，就默认从头开始
-						lastErrorCapital = nameCapitalRange[0].getCapital();
-				} catch (IOException e) {
-					// 如果读失败，就默认从头开始
-					lastErrorCapital = nameCapitalRange[0].getCapital();
-				}
-			}
 			
 			// 开始抓取
 			for (int i = 0; i < nodeList.size(); i++) {
@@ -128,7 +135,7 @@ public class SongCrawler {
 				}
 				
 				ServerLog.info(0, "* 正在写入歌手URL信息，首字母：" + nameCapital + "...");
-				FileHierarchyBuilder.writeSingerIndexFile(nameCapital, singerURLs);
+				fileHierarchyBuilder.writeSingerIndexFile(nameCapital, singerURLs);
 			}
 			
 		} catch (ParserException e) {
@@ -143,7 +150,7 @@ public class SongCrawler {
 			throw e;
 		} finally {
 			// 如果成功爬完所有字母，并且有这个错误文件存在的话，就把它删除掉
-			if (nameCapital.equals("Z") && errorCrawlingSingersURLLog.exists()) {
+			if (nameCapital!=null && nameCapital.equals("Z") && errorCrawlingSingersURLLog.exists()) {
 				errorCrawlingSingersURLLog.delete();
 			}
 		}
@@ -191,7 +198,7 @@ public class SongCrawler {
 	private void crawlSongsURLsForNameCapital(NameCapital nameCapital) {
 
 		// 先读取该字母下的singer_index文件，然后依次爬其中的歌手
-		List<String> lines = FileHierarchyBuilder.parseSingerIndexFile(nameCapital.getCapital());
+		List<String> lines = fileHierarchyBuilder.parseSingerIndexFile(nameCapital.getCapital());
 		if (lines == null) {
 			ServerLog.warn(0, "    Crawing songs URL for name capital " + nameCapital.getCapital() + " fails!");
 			errorCrawlingURLs.add(nameCapital.getCapital() + " : ");
@@ -203,7 +210,7 @@ public class SongCrawler {
 			String singerName = singerIndexLine.getSingerName();
 			String singerURL = singerIndexLine.getSingerURL();
 			
-			String songIndexPath = FileHierarchyBuilder.getSingerSongIndexFileName(singerName, nameCapital.getCapital());
+			String songIndexPath = fileHierarchyBuilder.getSingerSongIndexFileName(singerName, nameCapital.getCapital());
 			if (new File(songIndexPath).canRead()) {
 				ServerLog.info(0, "* 已存在,　跳过歌手: " + singerName);
 				continue;
@@ -211,6 +218,13 @@ public class SongCrawler {
 			// 抓取该歌手的所有歌曲URL
 			ServerLog.info(0, "* 正在抓取歌手[" + singerName + "]的所有歌曲URL:　" + singerURL);
 			crawlAllSongsURLsForOneSinger(singerName, nameCapital.getCapital(), singerURL);
+			try {
+				int sleep_interval_second = 30;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -264,26 +278,35 @@ public class SongCrawler {
                 future = downloader.submit(task);
 
                 // 获取结果
-				songData = future.get();
+				songData = future.get(3, TimeUnit.MINUTES);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 				future.cancel(true);
 				ServerLog.warn(0, "    Failed crawling " + singerPageURL + " Due to " + e.getCause());
 				errorCrawlingURLs.add(nameCapital + " : " + singerPageURL + "\n");
 			    return;
+			} catch (TimeoutException e) {
+				String cmd = PropertyConfiger.getRunCommand();
+				Runtime rt = Runtime.getRuntime();
+				try {
+					FileUtils.writeLines(new File(ERROR_CRAWLING_SONGS_URL_LOG), errorCrawlingURLs);
+					ServerLog.info(0, "超时未获得抓取结果,重启程序运行!!!");
+					rt.exec(cmd);
+					System.exit(0);
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
 			} catch (Exception e) {
 				ServerLog.warn(0, "    Failed crawling " + singerPageURL + " Due to " + e.getCause());
 				e.printStackTrace();
 				errorCrawlingURLs.add(nameCapital + " : " + singerPageURL + "\n");
 				return;
-			} catch (Error err) {
-				ServerLog.warn(0, "    Failed crawling " + singerPageURL + " Due to " + err.getCause());
-				errorCrawlingURLs.add(nameCapital + " : " + singerPageURL + "\n");
-				return;
 			}
             
 			//　完成后写入文件
-            FileHierarchyBuilder.writeSingerSongIndexFile(singerName, nameCapital, total, songData);
+            if (songData != null && songData.size() != 0) {
+            	fileHierarchyBuilder.writeSingerSongIndexFile(singerName, nameCapital, total, songData);
+            }
 		} catch (ParserException e1) {
 		    ServerLog.warn(0, "    Failed crawling " + singerPageURL);
 		    errorCrawlingURLs.add(nameCapital + " : " + singerPageURL + "\n");
@@ -317,7 +340,7 @@ public class SongCrawler {
 		String pathName = null;
 		File  tmpFile = null;
 		singerName = singerName.replaceAll("\\s+", "_");
-		pathName = FileHierarchyBuilder.getTmpFile(nameCapital, singerName, index);
+		pathName = fileHierarchyBuilder.getTmpFile(nameCapital, singerName, index);
 		tmpFile = new File(pathName);
 		try {
 			FileUtils.writeStringToFile(tmpFile, htmlString, null);
@@ -403,7 +426,7 @@ public class SongCrawler {
 	private void crawlSongsLyricsForNameCapital(NameCapital nameCapital) {
 
 		// 先读取该字母下的singer_index文件，然后依次爬其中的歌手
-		List<String> lines = FileHierarchyBuilder.parseSingerIndexFile(nameCapital.getCapital());
+		List<String> lines = fileHierarchyBuilder.parseSingerIndexFile(nameCapital.getCapital());
 		if (lines == null) {
 			ServerLog.warn(0, "    Crawing songs lyrics for name capital " + nameCapital.getCapital() + " fails!");
 			errorCrawlingLyrics.add(nameCapital.getCapital() + " : ");
@@ -417,6 +440,13 @@ public class SongCrawler {
 			// 抓取该歌手的所有歌曲歌词
 			ServerLog.info(0, "* 正在抓取歌手[" + singerName + "]的所有歌曲的歌词...");
 			crawlAllSongsLyricsForOneSinger(singerName, nameCapital.getCapital());
+			try {
+				int sleep_interval_second = 20;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -425,72 +455,114 @@ public class SongCrawler {
 	private void crawlAllSongsLyricsForOneSinger(final String singerName, final String nameCapital) {
 		
 		// 先读取该歌手目录下的song_index文件，然后依次抓取其中的歌曲的歌词
-		List<String> lines = FileHierarchyBuilder.parseSingerSongIndexFile(singerName, nameCapital);
+		List<String> lines = fileHierarchyBuilder.parseSingerSongIndexFile(singerName, nameCapital);
 		if (lines == null) {
 			ServerLog.warn(0, "   Crawing songs lyrics for singer [" +singerName + "] fails!");
 			errorCrawlingLyrics.add(nameCapital + " : ");
 			return;
 		}
 		
+		int speed_control = 0;
 		for (String line: lines) {
 			SongIndexLine songIndexLine = new SongIndexLine(line);
 			String songName = songIndexLine.getSongName();
 			String songURL = songIndexLine.getSongURL();
 			String songAlbum = songIndexLine.getSongAlbum();
 
-			String songLyricPath = FileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName); 
+			String songLyricPath = fileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName); 
 			if (new File(songLyricPath).canRead()) {
 				ServerLog.info(0, "  * 已存在,　跳过歌曲: " + songName);
 				continue;
 			}
 			
 			// 抓取这首歌歌词和分类信息
+			speed_control++;
 			ServerLog.info(0, "  * 正在抓取歌曲[" + songName + "]的歌词...");
 			crawlLyricOfOneSong(songName, songURL, songAlbum, singerName, nameCapital);
+			if (speed_control % 5 == 0) {
+				try {
+					int sleep_interval_second = 5;
+					ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+					Thread.sleep(sleep_interval_second * 1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 
 	
 	//　顺利的话从songURL中可以抓取到歌词; 如果没有歌词,则利用传入的信息从别的站点抓取
-	private void crawlLyricOfOneSong(String songName, String songURL,
-			String songAlbum, String singerName, String nameCapital) {
+	private void crawlLyricOfOneSong(final String songName, final String songURL,
+			String songAlbum, final String singerName, final String nameCapital) {
 
-		String lyric = null;
-		
-		try {
-			Parser lyricParser = new Parser(songURL);
-			lyricParser.setEncoding("UTF-8");
+		ExecutorService exec = Executors.newFixedThreadPool(1);
+		Callable<String> downloadLyric = new Callable<String>() {
 
-			//　抽取出歌词
-			NodeFilter lyricFilter = new AndFilter(new TagNameFilter("div"), new HasAttributeFilter("id", "lyricCont"));
-			NodeList lyricNodeList = lyricParser.parse(lyricFilter);
+			@Override
+			public String call() throws Exception {
+				String lyric = null;
+				try {
+					Parser lyricParser = new Parser(songURL);
+					lyricParser.setEncoding("UTF-8");
 
-			if (lyricNodeList.size() != 0 ) {
-				Node node = lyricNodeList.elementAt(0);
-				lyric = node.toPlainTextString();
-				
-				String lyricFilePath = FileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName);
-				FileUtils.writeStringToFile(new File(lyricFilePath), lyric, "UTF-8");
-			} else {
-				// 很不幸,　我们得去别的站点尝试下载歌词 -.-
-				ServerLog.info(0, "　 * 未在百度找到歌曲[" + songName + "]的歌词,　正在尝试在其他站点中查询...");
-				lyric = LyricSearcher.searchLyric(SearchSite.XIAMI, songName + " " + singerName);// 注意,　空格要用英文空格,否则搜不到  
-				if (lyric.equals(""))
-					// 如果还是那么不幸没找到,那就作罢...
-					lyric = "抱歉,　暂无歌词!";
-				
-				String lyricFilePath = FileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName);
-				FileUtils.writeStringToFile(new File(lyricFilePath), lyric, "UTF-8");
+					//　抽取出歌词
+					NodeFilter lyricFilter = new AndFilter(new TagNameFilter("div"), new HasAttributeFilter("id", "lyricCont"));
+					NodeList lyricNodeList = lyricParser.parse(lyricFilter);
+
+					if (lyricNodeList.size() != 0 ) {
+						Node node = lyricNodeList.elementAt(0);
+						lyric = node.toPlainTextString();
+					} else {
+						// 很不幸,　我们得去别的站点尝试下载歌词 -.-
+						ServerLog.info(0, "　 * 未在百度找到歌曲[" + songName + "]的歌词,　正在尝试在其他站点中查询...");
+						lyric = LyricSearcher.searchLyric(SearchSite.XIAMI, songName + " " + singerName);// 注意,　空格要用英文空格,否则搜不到  
+						if (lyric.equals(""))
+							// 如果还是那么不幸没找到,那就作罢...
+							lyric = "抱歉,　暂无歌词!";
+					}
+				} catch (ParserException e) {
+					e.printStackTrace();
+					errorCrawlingLyrics.add(songURL);
+				} catch (Exception e) {
+					e.printStackTrace();
+					errorCrawlingLyrics.add(songURL);
+				}
+				return lyric;
 			}
-		} catch (ParserException e) {
+		};
+		
+		Future<String> future = exec.submit(downloadLyric);
+		try {
+			// 如果３分钟没有结果,就重启该程序.　该程序会自动跳过已经完成的,
+			//　接着运行.
+			String lyric = future.get(3, TimeUnit.MINUTES);
+			if (lyric != null) {
+				// 成功下载歌词,写入文件
+				String lyricFilePath = fileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName);
+				FileUtils.writeStringToFile(new File(lyricFilePath), lyric, "UTF-8");				
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			errorCrawlingLyrics.add(songURL);
+		} catch (ExecutionException e) {
 			e.printStackTrace();
 			errorCrawlingLyrics.add(songURL);
 		} catch (IOException e) {
 			e.printStackTrace();
 			errorCrawlingLyrics.add(songURL);
-		} catch (Exception e) {
-			e.printStackTrace();
-			errorCrawlingLyrics.add(songURL);
+		} catch (TimeoutException e) {
+			String cmd = PropertyConfiger.getRunCommand();
+			Runtime rt = Runtime.getRuntime();
+			try {
+				FileUtils.writeLines(new File(ERROR_CRAWLING_SONGS_URL_LOG), errorCrawlingURLs);
+				FileUtils.writeLines(new File(ERROR_CRAWLING_SONGS_LYRICS_LOG), errorCrawlingLyrics);
+				ServerLog.info(0, "超时未获得抓取结果,重启程序运行!!!");
+				rt.exec(cmd);
+				System.exit(0);
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
 		}
 	}
 
