@@ -69,23 +69,6 @@ public class SongCrawler {
 		File errorCrawlingSingersURLLog = new File(ERROR_CRAWLING_SINGERS_URL_LOG);
 		
 		try {
-			// 如果errorCrawlingSingerURLLog文件存在，则读取它
-			// 然后从上次失败的首字母开始抓取
-			String lastErrorCapital = null;
-			if ( errorCrawlingSingersURLLog.canRead()) {
-		    	try {
-					lastErrorCapital = FileUtils.readFileToString(errorCrawlingSingersURLLog);
-					if (lastErrorCapital == null || lastErrorCapital.equals("")
-							|| ! Character.isUpperCase(lastErrorCapital.charAt(0)))
-						// 如果不是合法的Ａ——Ｚ，就默认从头开始
-						lastErrorCapital = nameCapitalRange[0].getCapital();
-				} catch (IOException e) {
-					// 如果读失败，就默认从头开始
-					lastErrorCapital = nameCapitalRange[0].getCapital();
-				}
-			}
-			
-			
 		    /* --- 解析百度音乐首页，抽取歌手信息开始 --- */
 			
 			Parser allSingersParser = new Parser(BAIDU_MUSIC_HOME_PAGE);
@@ -119,11 +102,6 @@ public class SongCrawler {
 						NameCapital.valueOf(nameCapital).ordinal() > nameCapitalRange[1].ordinal())
 					// 不在范围内的跳过
 					continue;
-				if (lastErrorCapital != null && nameCapital.compareTo(lastErrorCapital) < 0) {
-					// 跳过已经抓取的首字母
-					ServerLog.info(0, "* 已存在，跳过写入歌手URL信息，首字母：" + nameCapital + "...");
-					continue;
-			    }
 				if (new File(fileHierarchyBuilder.getSingerIndexFileName(nameCapital)).canRead()) {
 					// 跳过已经抓取的首字母
 					ServerLog.info(0, "* 已存在，跳过写入歌手URL信息，首字母：" + nameCapital + "...");
