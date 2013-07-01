@@ -7,4 +7,5 @@ deploy.sh
 build.sh
 /.settings/
 /bin
-*log*
+*.log
+log_*

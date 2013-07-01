@@ -119,10 +119,17 @@ public class SongCrawler {
 						NameCapital.valueOf(nameCapital).ordinal() > nameCapitalRange[1].ordinal())
 					// 不在范围内的跳过
 					continue;
-				if (lastErrorCapital != null && nameCapital.compareTo(lastErrorCapital) < 0)
+				if (lastErrorCapital != null && nameCapital.compareTo(lastErrorCapital) < 0) {
 					// 跳过已经抓取的首字母
+					ServerLog.info(0, "* 已存在，跳过写入歌手URL信息，首字母：" + nameCapital + "...");
 					continue;
-									
+			    }
+				if (new File(fileHierarchyBuilder.getSingerIndexFileName(nameCapital)).canRead()) {
+					// 跳过已经抓取的首字母
+					ServerLog.info(0, "* 已存在，跳过写入歌手URL信息，首字母：" + nameCapital + "...");
+					continue;
+				}
+				
 				Node node = singerNodeList.elementAt(i);
 				NodeList singerList = new NodeList();
 				node.collectInto(singerList, new TagNameFilter("a"));
@@ -186,7 +193,7 @@ public class SongCrawler {
 			crawlSongsLyricsForNameCapital(NameCapital.valueOf(i));
 		}
 		
-		// 爬完就把失败URL写入文件,以便之后重新抓取
+		// 爬完就把 ＊抓取失败的URL＊ 写入文件,以便之后重新抓取
 		// 如果写入失败,就抛出异常,并最终传递到控制台
 	    //　因为这个*写入失败URL*操作已经是补救措施,如果补救措施仍失败,那么只好向控制台报告错误
 		FileUtils.writeLines(new File(ERROR_CRAWLING_SONGS_LYRICS_LOG), errorCrawlingLyrics);
@@ -462,7 +469,6 @@ public class SongCrawler {
 			return;
 		}
 		
-		int speed_control = 0;
 		for (String line: lines) {
 			SongIndexLine songIndexLine = new SongIndexLine(line);
 			String songName = songIndexLine.getSongName();
@@ -476,17 +482,14 @@ public class SongCrawler {
 			}
 			
 			// 抓取这首歌歌词和分类信息
-			speed_control++;
-			ServerLog.info(0, "  * 正在抓取歌曲[" + songName + "]的歌词...");
+			ServerLog.info(0, "  * 正在抓取歌曲[" + songName + "]的歌词（nameCapital: " +nameCapital + "）...");
 			crawlLyricOfOneSong(songName, songURL, songAlbum, singerName, nameCapital);
-			if (speed_control % 5 == 0) {
-				try {
-					int sleep_interval_second = 5;
-					ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
-					Thread.sleep(sleep_interval_second * 1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-				}
+			try {
+				int sleep_interval_second = 3;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
 			}
 		}
 	}
@@ -512,14 +515,16 @@ public class SongCrawler {
 
 					if (lyricNodeList.size() != 0 ) {
 						Node node = lyricNodeList.elementAt(0);
-						lyric = node.toPlainTextString();
+						lyric = lyricCleaner(node.toPlainTextString());
 					} else {
 						// 很不幸,　我们得去别的站点尝试下载歌词 -.-
-						ServerLog.info(0, "　 * 未在百度找到歌曲[" + songName + "]的歌词,　正在尝试在其他站点中查询...");
-						lyric = LyricSearcher.searchLyric(SearchSite.XIAMI, songName + " " + singerName);// 注意,　空格要用英文空格,否则搜不到  
-						if (lyric.equals(""))
+						ServerLog.info(0, "　 * 未在百度找到歌曲[" + songName + "]的歌词, 正在尝试在其他站点中查询...");
+						lyric = LyricSearcher.searchLyric(SearchSite.XIAMI, songName);  
+						if (lyric.equals("")) {
 							// 如果还是那么不幸没找到,那就作罢...
+							ServerLog.info(0, "　 * 未在虾米找到歌曲[" + songName + "]的歌词, 放弃...");
 							lyric = "抱歉,　暂无歌词!";
+						}
 					}
 				} catch (ParserException e) {
 					e.printStackTrace();
@@ -530,6 +535,7 @@ public class SongCrawler {
 				}
 				return lyric;
 			}
+
 		};
 		
 		Future<String> future = exec.submit(downloadLyric);
@@ -566,4 +572,15 @@ public class SongCrawler {
 		}
 	}
 
+
+	public String lyricCleaner(String rawLyric) {
+		
+		String[] lines = rawLyric.split("\n");
+		String result = "";
+		for (String line: lines) {
+			result += line.replaceFirst("\\s+", "") + "\n";
+		}
+		
+		return result;
+	}
 }

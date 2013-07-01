@@ -73,7 +73,7 @@ public class LyricSearcher {
         
         httpClient.executeMethod(searchGet);
         
-        String body = searchGet.getResponseBodyAsString();
+        String body = searchGet.getResponseBodyAsString(65536);
 		return body;
 	}  
 	

@@ -9,11 +9,11 @@ import com.orange.songcrawler.util.PropertyConfiger;
 public class MainCrawler {
 
     public static void main(String[] args) throws Exception {
-		
+    	   
 		String crawlerType = System.getProperty("crawler_type"); // daily or oneshot
-		String host = System.getProperty("host");
+		String host = System.getProperty("host"); // see CrawlerPolicy.class
 		String doCategorize = System.getProperty("do_categorize"); // 1 or 0
-		String writeToDB = System.getProperty("write_db");
+		String writeToDB = System.getProperty("write_db"); // 1 or 0
 		
 		PropertyConfiger.setRunCommand(); // 读取运行此程序的命令,　以便在抓取过程中可以重启运行本程序
 		PropertyConfiger.setSongsDirectory();

@@ -3,7 +3,6 @@ package com.orange.songcrawler.util;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +55,7 @@ public class DBAccessProxy {
 	private void writeAllsongsCollections() throws IOException {
 
 		for (NameCapital nc : NameCapital.values()) {
-			writeSongCollectionForNameCapital(nc.getCapital());
+			writeSongCollectionForNameCapital(nc);
 		}
 		
 		FileUtils.writeLines(new File(ERROR_WRITING_SONGS_LOG), "UTF-8", errorWritingSongCollection);
@@ -65,13 +64,13 @@ public class DBAccessProxy {
 	}
 
 	
-	@SuppressWarnings({ "unchecked" })
-	private void writeSongCollectionForNameCapital(String nameCapital) {
+	public void writeSongCollectionForNameCapital(NameCapital nameCapital) {
 		
-		List<String> singerIndexLines = fileHierarchyBulder.parseSingerIndexFile(nameCapital);
+		List<String> singerIndexLines = fileHierarchyBulder.parseSingerIndexFile(nameCapital.getCapital());
 		if (singerIndexLines == null) {
 			ServerLog.warn(0,"Failed Writing song collection for name capital: "+ nameCapital);
 			errorWritingSongCollection.add(nameCapital + " : : ");
+			return;
 		}
 		
 		for (String line : singerIndexLines) {
@@ -80,21 +79,19 @@ public class DBAccessProxy {
 			
 			// 写入该歌手的所有歌曲信息到数据库中
 			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<>();
-			String songIndexFile = fileHierarchyBulder.getSingerSongIndexFileName(singerName, nameCapital);
-			List<String> songIndexLines;
-			try {
-				songIndexLines = FileUtils.readLines(new File(songIndexFile),"UTF-8");
-			} catch (IOException e) {
-				e.printStackTrace();
+			List<String> songIndexLines = fileHierarchyBulder.parseSingerSongIndexFile(singerName, nameCapital.getCapital());
+			if (songIndexLines == null) {
+				ServerLog.warn(0,"Failed Writing song collection for singer : "+ singerName);
 				errorWritingSongCollection.add(nameCapital + " : " + singerName + " : ");
-				songIndexLines = Collections.emptyList();
+				continue;
 			}
+			
 			for (String sil : songIndexLines) {
 				SongIndexLine songIndexLine = new SongIndexLine(sil);
 				String songName = songIndexLine.getSongName();
 				String songURL = songIndexLine.getSongURL();
 				String songAlbum = songIndexLine.getSongAlbum();
-				String lyricPath = fileHierarchyBulder.getLyricFileName(singerName, nameCapital, songName);
+				String lyricPath = fileHierarchyBulder.getLyricFileName(singerName, nameCapital.getCapital(), songName);
 				Song song = new Song(songName, songURL, songAlbum, singerName, lyricPath);
 
 				ServerLog.info(0, "* 正在写入歌曲到数据库中: " + songName);
@@ -102,11 +99,13 @@ public class DBAccessProxy {
 				if (songOId == null) {
 					ServerLog.info(0, "Failed writing song collection for [" + singerName + "]'s song: " + songURL);
 					errorWritingSongCollection.add(nameCapital + " : " + singerName + " : " + songURL);
+					continue;
 				}
 
-				allSongsObjectIds.add(new SongObjectIdMap(songName, songOId.toString()));
+				// mongodb中字段名不能含有点，　所以替换为文字表示
+				allSongsObjectIds.add(new SongObjectIdMap(songName.replace(".", "_dot_"), songOId.toString()));
 			}
-		    
+			
 			//　写完这个歌手的所有歌曲,　再为其生成一个歌曲索引表:singer_song_index
 			ServerLog.info(0, "** 正在为歌手[" + singerName + "]写入song_index表...");
 			ObjectId singerSongIndexOId = (ObjectId)songManager.writeSingerSongIndexCollection(singerName, allSongsObjectIds);
@@ -118,7 +117,7 @@ public class DBAccessProxy {
 			
 			// 再为这个歌手生成一个singer表
 			ServerLog.info(0, "*** 正在为歌手[" + singerName + "]写入singer表...");
-			ObjectId singerOId = (ObjectId)songManager.writeSingerCollection(nameCapital, singerName, singerSongIndexOId);
+			ObjectId singerOId = (ObjectId)songManager.writeSingerCollection(nameCapital.getCapital(), singerName, singerSongIndexOId);
 			if (singerOId == null) {
 				ServerLog.info(0, "Failed writing signer_song_index for singer " + singerName);
 				errorWritingSingerCollection.add(nameCapital + ":" + singerName + "\n" + allSongsObjectIds.toString());
