@@ -90,7 +90,6 @@ public class SongCrawler {
 			
 		    /* --- 解析百度音乐首页，抽取歌手信息结束 --- */
 			
-			
 			// 开始抓取
 			for (int i = 0; i < nodeList.size(); i++) {
 				nameCapital = nameCapitalNodeList.elementAt(i).getText();
@@ -114,7 +113,7 @@ public class SongCrawler {
 				List<String> singerURLs = new ArrayList<String>(); //该首字母下的所有歌手URL
 				for (int j = 0; j < singerList.size(); j++) {
 					Node nameNode = singerList.elementAt(j);
-					String singerName = ((LinkTag)nameNode).getAttribute("title");
+					String singerName = nameCleaner(((LinkTag)nameNode).getAttribute("title"));
 					String URL = ((LinkTag)nameNode).extractLink();
 					singerURLs.add(SingerIndexLine.buildLine(singerName, URL));
 				}
@@ -141,6 +140,16 @@ public class SongCrawler {
 		}
 	}
 	
+	
+	public String nameCleaner(String name) {
+		String result;
+		result = name.replace("&#039;", "'");
+		result = result.replace("&amp;", "&");
+		result = result.replace("&eacute;", "é");
+		result = result.replace(";", "_");
+		
+		return result;
+	}
 	
 	public void crawlSongsURLs(NameCapital[] nameCapitalRange) throws IOException {
 	
@@ -378,7 +387,7 @@ public class SongCrawler {
 				// 　 <a href=..., title="歌名">text</a>
 				// 抽取出歌名:　title　和 歌曲链接:　href      
 				Node songTitleNode = songTitleNodeList.elementAt(i);
-				String songName = ((LinkTag)songTitleNode).getAttribute("title");
+				String songName = nameCleaner(((LinkTag)songTitleNode).getAttribute("title"));
 				String songURL  = "http://music.baidu.com" + ((LinkTag)songTitleNode).getLink().replace("file://localhost", "");
 
 				// 获取专辑节点后,节点中可能为空, 也可能包含:
@@ -390,7 +399,7 @@ public class SongCrawler {
 				albumSpanTagList.elementAt(0).collectInto(albumATagList, new TagNameFilter("a"));
 				String album = "";
 				if (albumATagList.size() != 0) {
-					album = albumATagList.elementAt(0).toPlainTextString();
+					album = nameCleaner(albumATagList.elementAt(0).toPlainTextString());
 				}
 
 				result.add(SongIndexLine.buildLine(songName, songURL, album));
@@ -425,13 +434,6 @@ public class SongCrawler {
 			// 抓取该歌手的所有歌曲歌词
 			ServerLog.info(0, "* 正在抓取歌手[" + singerName + "]的所有歌曲的歌词...");
 			crawlAllSongsLyricsForOneSinger(singerName, nameCapital.getCapital());
-			try {
-				int sleep_interval_second = 20;
-				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
-				Thread.sleep(sleep_interval_second * 1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
 		}
 	}
 
@@ -447,6 +449,7 @@ public class SongCrawler {
 			return;
 		}
 		
+		int skipTimes = 0;
 		for (String line: lines) {
 			SongIndexLine songIndexLine = new SongIndexLine(line);
 			String songName = songIndexLine.getSongName();
@@ -455,15 +458,25 @@ public class SongCrawler {
 
 			String songLyricPath = fileHierarchyBuilder.getLyricFileName(singerName, nameCapital, songName); 
 			if (new File(songLyricPath).canRead()) {
-				ServerLog.info(0, "  * 已存在,　跳过歌曲: " + songName);
+				ServerLog.info(0, "  * 已存在歌曲[" + songName + "]（nameCapital: " +nameCapital + ", singer : " + singerName +" ）,　跳过...");
+				skipTimes++;
 				continue;
 			}
 			
 			// 抓取这首歌歌词和分类信息
-			ServerLog.info(0, "  * 正在抓取歌曲[" + songName + "]的歌词（nameCapital: " +nameCapital + "）...");
+			ServerLog.info(0, "  * 正在抓取歌曲[" + songName + "]的歌词（nameCapital: " +nameCapital + ", singer : " + singerName +" ）...");
 			crawlLyricOfOneSong(songName, songURL, songAlbum, singerName, nameCapital);
 			try {
 				int sleep_interval_second = 3;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		if (skipTimes != lines.size()) {
+			try {
+				int sleep_interval_second = 20;
 				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
 				Thread.sleep(sleep_interval_second * 1000);
 			} catch (InterruptedException e) {
@@ -561,4 +574,16 @@ public class SongCrawler {
 		
 		return result;
 	}
+	
+	public static void main(String[] args){
+		SongCrawler s = SongCrawler.getInstance();
+		String name = "/home/larmbr/r&amp;b/test";
+		try {
+			FileUtils.writeStringToFile(new File(s.nameCleaner(name)), "test");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 }

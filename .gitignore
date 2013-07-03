@@ -8,4 +8,5 @@ build.sh
 /.settings/
 /bin
 *.log
-log_*
+log*
+run_song_crawler.sh

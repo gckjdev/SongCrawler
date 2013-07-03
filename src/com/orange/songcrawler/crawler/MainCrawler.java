@@ -24,10 +24,11 @@ public class MainCrawler {
 		} 
 		else if ( crawlerType != null &&  crawlerType.equalsIgnoreCase("oneshot")) {
 	    	OneShotCrawler.getInstance().crawlTheWholeWorld(host);
-	    	if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
-	    		DBAccessProxy.getInstance().writeAllSongsInfoToDB();
-	    	}
+	    	
 		}
+		else if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
+    		DBAccessProxy.getInstance().writeAllSongsInfoToDB();
+    	} 
 		else if ( doCategorize != null &&Integer.parseInt(doCategorize) == 1 ) {
 			SongCategorizer.getInstance().categorizeAllSongs();
 		}

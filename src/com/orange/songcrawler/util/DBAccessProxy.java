@@ -73,11 +73,11 @@ public class DBAccessProxy {
 			return;
 		}
 		
+		// 遍历该字母下的singer_index文件，依次把每个歌手歌曲写入song表
 		for (String line : singerIndexLines) {
 			SingerIndexLine singerIndexLine = new SingerIndexLine(line);
 			String singerName = singerIndexLine.getSingerName();
 			
-			// 写入该歌手的所有歌曲信息到数据库中
 			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<>();
 			List<String> songIndexLines = fileHierarchyBulder.parseSingerSongIndexFile(singerName, nameCapital.getCapital());
 			if (songIndexLines == null) {
@@ -88,9 +88,9 @@ public class DBAccessProxy {
 			
 			for (String sil : songIndexLines) {
 				SongIndexLine songIndexLine = new SongIndexLine(sil);
-				String songName = songIndexLine.getSongName();
-				String songURL = songIndexLine.getSongURL();
-				String songAlbum = songIndexLine.getSongAlbum();
+				String songName = nameCleaner(songIndexLine.getSongName());
+				String songURL = nameCleaner(songIndexLine.getSongURL());
+				String songAlbum = nameCleaner(songIndexLine.getSongAlbum());
 				String lyricPath = fileHierarchyBulder.getLyricFileName(singerName, nameCapital.getCapital(), songName);
 				Song song = new Song(songName, songURL, songAlbum, singerName, lyricPath);
 
@@ -125,7 +125,16 @@ public class DBAccessProxy {
 		}
 	}
 
-
+	private String nameCleaner(String name) {
+		String result;
+		result = name.replace("&#039;", "'");
+		result = result.replace("&amp;", "&");
+		result = result.replace("&eacute;", "é");
+		result = result.replace(";", "_");
+		
+		return result;
+	}
+	
 	public void updateCategoryInfoForSong(Song song, String category, String subcategory) {
 		songManager.updateCategoryInfoForSong(song, category, subcategory);
 	}
