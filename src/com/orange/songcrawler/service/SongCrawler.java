@@ -147,6 +147,7 @@ public class SongCrawler {
 		result = result.replace("&amp;", "&");
 		result = result.replace("&eacute;", "é");
 		result = result.replace(";", "_");
+		result = result.replace("/", "_");
 		
 		return result;
 	}
@@ -577,9 +578,9 @@ public class SongCrawler {
 	
 	public static void main(String[] args){
 		SongCrawler s = SongCrawler.getInstance();
-		String name = "/home/larmbr/r&amp;b/test";
+		String name = "r/b";
 		try {
-			FileUtils.writeStringToFile(new File(s.nameCleaner(name)), "test");
+			FileUtils.writeStringToFile(new File("/home/larmbr/"+s.nameCleaner(name)+"/test"), "test");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

@@ -11,7 +11,8 @@ public class MainCrawler {
     public static void main(String[] args) throws Exception {
     	   
 		String crawlerType = System.getProperty("crawler_type"); // daily or oneshot
-		String host = System.getProperty("host"); // see CrawlerPolicy.class
+		String startCapital = System.getProperty("start_capital"); // see CrawlPolicy
+		String endCapital = System.getProperty("end_capital");
 		String doCategorize = System.getProperty("do_categorize"); // 1 or 0
 		String writeToDB = System.getProperty("write_db"); // 1 or 0
 		
@@ -23,8 +24,7 @@ public class MainCrawler {
 		
 		} 
 		else if ( crawlerType != null &&  crawlerType.equalsIgnoreCase("oneshot")) {
-	    	OneShotCrawler.getInstance().crawlTheWholeWorld(host);
-	    	
+	    	OneShotCrawler.getInstance().crawlTheWholeWorld(startCapital, endCapital);
 		}
 		else if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
     		DBAccessProxy.getInstance().writeAllSongsInfoToDB();

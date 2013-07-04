@@ -131,6 +131,7 @@ public class DBAccessProxy {
 		result = result.replace("&amp;", "&");
 		result = result.replace("&eacute;", "é");
 		result = result.replace(";", "_");
+		result = result.replace("/", "_");
 		
 		return result;
 	}

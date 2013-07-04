@@ -1,9 +1,5 @@
 package com.orange.songcrawler.crawler;
 
-import java.io.IOException;
-
-import org.htmlparser.util.ParserException;
-
 import com.orange.songcrawler.service.CrawlPolicy;
 import com.orange.songcrawler.service.CrawlPolicy.NameCapital;
 import com.orange.songcrawler.service.SongCrawler;
@@ -18,10 +14,10 @@ public class OneShotCrawler {
 	}
 	
 	
-	public void crawlTheWholeWorld(String host) throws ParserException, IOException {
+	public void crawlTheWholeWorld(String startCapital, String endCapital) throws Exception {
 		
 		// 由自己所处哪台机器决定抓取什么首字母范围的歌手
-      	NameCapital[] nameCapitalRange = CrawlPolicy.dispatchNameCapitalRange(host);
+      	NameCapital[] nameCapitalRange = CrawlPolicy.dispatchNameCapitalRange(startCapital, endCapital);
 		
       	SongCrawler songCrawler = SongCrawler.getInstance();
       	

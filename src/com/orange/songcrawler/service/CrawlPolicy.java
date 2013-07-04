@@ -31,49 +31,30 @@ public class CrawlPolicy {
 		}
 	}
 
-	public static NameCapital[] dispatchNameCapitalRange(String host) {
+	public static NameCapital[] dispatchNameCapitalRange(String startCapital, String endCapital) throws Exception {
+		
+		if (startCapital == null || endCapital == null) {
+			throw new Exception("You must provide start capital and end capital !!!");
+		}
 		
 		// 抓singersRange[0]至singersRange[１]的所有歌曲
 		NameCapital[] nameCapitalRange = new NameCapital[2];
-		if (host != null) {
-			switch (host) {
-				case "1":
-				/* A, B, C, D, E */
-				nameCapitalRange[0] = NameCapital.A;
-				nameCapitalRange[1] = NameCapital.E;
-				break;
-			case "2":
-				/* F, G, H, I, J, K */
-				/* I字母很少,　所以安排这机器负责６个字母 */
-				nameCapitalRange[0] = NameCapital.F;
-				nameCapitalRange[1] = NameCapital.K;
-				break;
-			case "3":
-				/* L, M, N, O, P */
-				nameCapitalRange[0] = NameCapital.L;
-				nameCapitalRange[1] = NameCapital.P;
-				break;
-			case "4":
-				/* Q, R, S, T, U */
-				nameCapitalRange[0] = NameCapital.Q;
-				nameCapitalRange[1] = NameCapital.U;
-				break;
-			case "5":
-				/* V, W, X, Y, Z */
-				nameCapitalRange[0] = NameCapital.V;
-				nameCapitalRange[1] = NameCapital.Z;
-				break;
-			default:
-				nameCapitalRange[0] = NameCapital.C;
-				nameCapitalRange[1] = NameCapital.C;
-				break;
-			}
-		} else {
-			/* Just for test */
-			nameCapitalRange[0] = NameCapital.C;
-			nameCapitalRange[1] = NameCapital.C;
+		
+		// 检查是否合格的字母，否则中止程序！
+		if (! Character.isUpperCase(startCapital.charAt(0)) ||
+				! Character.isUpperCase(endCapital.charAt(0)) ) {
+			throw new Exception("You must provide a valid capital range");
 		}
-		    
+		
+		// 检查start是否小于等于end, 否则中止程序！
+		if (NameCapital.valueOf(startCapital).ordinal() >
+				NameCapital.valueOf(endCapital).ordinal() ) {
+			throw new Exception("You must provide a valid capital range");
+		}
+		
+		nameCapitalRange[0] = NameCapital.valueOf(startCapital);
+		nameCapitalRange[1] = NameCapital.valueOf(endCapital);
+		
 		return nameCapitalRange;
 	}
 	
