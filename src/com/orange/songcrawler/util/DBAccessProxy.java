@@ -47,24 +47,68 @@ public class DBAccessProxy {
 	}
 	
 
-	public void writeAllSongsInfoToDB() throws IOException {
-		writeAllsongsCollections();
+	public void writeSongsInfoToDB(String startCapital, String endCapital) throws IOException {
+		
+		// 第一步：把所有歌曲写入song表
+		writeSongsCollections(startCapital, endCapital);
+		
+		// 第二步（可选）：为所有歌手创建singer_song_index表
+		writeSingerSongIndexCollections(startCapital, endCapital);
+		
+		// 第三步（可选）：为所有歌手创建singer表
+		writeSingerCollections(startCapital, endCapital);
 	}
 
 
-	private void writeAllsongsCollections() throws IOException {
+	private void writeSongsCollections(String startCapital, String endCapital) throws IOException {
 
 		for (NameCapital nc : NameCapital.values()) {
+			if ( nc.ordinal() < NameCapital.valueOf(startCapital).ordinal() ||
+					nc.ordinal() > NameCapital.valueOf(endCapital).ordinal() )
+				// 不在范围内的跳过
+				continue;
+			
 			writeSongCollectionForNameCapital(nc);
 		}
 		
+		// 完成后把出错的条目写入日志文件
 		FileUtils.writeLines(new File(ERROR_WRITING_SONGS_LOG), "UTF-8", errorWritingSongCollection);
-		FileUtils.writeLines(new File(ERROR_WRITING_SONG_INDEX_LOG), "UTF-8", errorWritingSongIndexCollection);
-		FileUtils.writeLines(new File(ERROR_WRITING_SINGERS_LOG), "UTF-8", errorWritingSingerCollection);
 	}
 
 	
-	public void writeSongCollectionForNameCapital(NameCapital nameCapital) {
+	private void writeSingerSongIndexCollections(String startCapital,String endCapital) throws IOException {
+		
+		for (NameCapital nc : NameCapital.values()) {
+			if ( nc.ordinal() < NameCapital.valueOf(startCapital).ordinal() ||
+					nc.ordinal() > NameCapital.valueOf(endCapital).ordinal() )
+				// 不在范围内的跳过
+				continue;
+		
+			WriteSongIndexCollectionForNameCapital(nc);
+		}
+		
+		// 完成后把出错的条目写入日志文件
+		FileUtils.writeLines(new File(ERROR_WRITING_SONG_INDEX_LOG), "UTF-8", errorWritingSongIndexCollection);
+	}
+	
+	
+	private void writeSingerCollections(String startCapital,String endCapital) throws IOException {
+		
+		for (NameCapital nc : NameCapital.values()) {
+			if ( nc.ordinal() < NameCapital.valueOf(startCapital).ordinal() ||
+					nc.ordinal() > NameCapital.valueOf(endCapital).ordinal() )
+				// 不在范围内的跳过
+				continue;
+		
+			WriteSingerCollectionForNameCapital(nc);
+		}
+		
+		// 完成后把出错的条目写入日志文件
+		FileUtils.writeLines(new File(ERROR_WRITING_SINGERS_LOG), "UTF-8", errorWritingSingerCollection);
+	}
+	
+	
+    private void writeSongCollectionForNameCapital(NameCapital nameCapital) {
 		
 		List<String> singerIndexLines = fileHierarchyBulder.parseSingerIndexFile(nameCapital.getCapital());
 		if (singerIndexLines == null) {
@@ -73,12 +117,12 @@ public class DBAccessProxy {
 			return;
 		}
 		
-		// 遍历该字母下的singer_index文件，依次把每个歌手歌曲写入song表
+		// 遍历该字母下的singer_index文件
 		for (String line : singerIndexLines) {
 			SingerIndexLine singerIndexLine = new SingerIndexLine(line);
 			String singerName = singerIndexLine.getSingerName();
 			
-			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<>();
+			// 遍历该歌手的song_index文件,把每一首歌曲写入song表
 			List<String> songIndexLines = fileHierarchyBulder.parseSingerSongIndexFile(singerName, nameCapital.getCapital());
 			if (songIndexLines == null) {
 				ServerLog.warn(0,"Failed Writing song collection for singer : "+ singerName);
@@ -86,45 +130,113 @@ public class DBAccessProxy {
 				continue;
 			}
 			
+			int sleepCount = 0;
 			for (String sil : songIndexLines) {
 				SongIndexLine songIndexLine = new SongIndexLine(sil);
 				String songName = nameCleaner(songIndexLine.getSongName());
-				String songURL = nameCleaner(songIndexLine.getSongURL());
+				String songURL = songIndexLine.getSongURL();
 				String songAlbum = nameCleaner(songIndexLine.getSongAlbum());
 				String lyricPath = fileHierarchyBulder.getLyricFileName(singerName, nameCapital.getCapital(), songName);
 				Song song = new Song(songName, songURL, songAlbum, singerName, lyricPath);
 
-				ServerLog.info(0, "* 正在写入歌曲到数据库中: " + songName);
-				ObjectId songOId = (ObjectId)songManager.writeOneSongIntoDB(song);
-				if (songOId == null) {
-					ServerLog.info(0, "Failed writing song collection for [" + singerName + "]'s song: " + songURL);
-					errorWritingSongCollection.add(nameCapital + " : " + singerName + " : " + songURL);
-					continue;
-				}
+				ServerLog.info(0, "* 正在写入歌曲到数据库中: [" + songName + "]（ nameCapital: "+nameCapital + ", singer : " + singerName +" )");
+				songManager.writeOneSongIntoDB(song);
 
-				// mongodb中字段名不能含有点，　所以替换为文字表示
-				allSongsObjectIds.add(new SongObjectIdMap(songName.replace(".", "_dot_"), songOId.toString()));
-			}
-			
-			//　写完这个歌手的所有歌曲,　再为其生成一个歌曲索引表:singer_song_index
-			ServerLog.info(0, "** 正在为歌手[" + singerName + "]写入song_index表...");
-			ObjectId singerSongIndexOId = (ObjectId)songManager.writeSingerSongIndexCollection(singerName, allSongsObjectIds);
-			if (singerSongIndexOId == null) {
-				ServerLog.info(0, "Failed writing signer_song_index for singer " + singerName);
-				errorWritingSongIndexCollection.add(singerName + "\n" + allSongsObjectIds.toString());
-				continue;
-			}
-			
-			// 再为这个歌手生成一个singer表
-			ServerLog.info(0, "*** 正在为歌手[" + singerName + "]写入singer表...");
-			ObjectId singerOId = (ObjectId)songManager.writeSingerCollection(nameCapital.getCapital(), singerName, singerSongIndexOId);
-			if (singerOId == null) {
-				ServerLog.info(0, "Failed writing signer_song_index for singer " + singerName);
-				errorWritingSingerCollection.add(nameCapital + ":" + singerName + "\n" + allSongsObjectIds.toString());
+				// 速率控制
+				sleepCount++;
+				doSleepIfNeeded(sleepCount);
 			}
 		}
 	}
 
+
+   private void WriteSongIndexCollectionForNameCapital(NameCapital nameCapital) {
+	
+		List<String> singerIndexLines = fileHierarchyBulder
+				.parseSingerIndexFile(nameCapital.getCapital());
+		if (singerIndexLines == null) {
+			ServerLog.warn(0, "Failed Writing singer_song_index collection for name capital: " + nameCapital);
+			errorWritingSongIndexCollection.add(nameCapital + " : : ");
+			return;
+		}
+
+		// 遍历该字母下的singer_index文件
+		int sleepCount = 0;
+		for (String line : singerIndexLines) {
+			SingerIndexLine singerIndexLine = new SingerIndexLine(line);
+			String singerName = singerIndexLine.getSingerName();
+
+			// 遍历该歌手的song_index文件
+			List<String> songIndexLines = fileHierarchyBulder.parseSingerSongIndexFile(singerName, nameCapital.getCapital());
+			if (songIndexLines == null) {
+				ServerLog.warn(0,"Failed Writing singer_song_index collection for singer : " + singerName);
+				errorWritingSongIndexCollection.add(nameCapital + " : " + singerName + " : ");
+				continue;
+			}
+
+			List<Song> songs = new ArrayList<Song>();
+			for (String sil : songIndexLines) {
+				SongIndexLine songIndexLine = new SongIndexLine(sil);
+				String songName = nameCleaner(songIndexLine.getSongName());
+				songs.addAll(songManager.findSongBySongNameAndSinger(songName, singerName));
+			}
+
+			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<SongObjectIdMap>();
+			for (Song song : songs) {
+				allSongsObjectIds.add(new SongObjectIdMap(song.getSingerName(),song.getObjectId().toString()));
+			}
+
+			ServerLog.info(0, "** 正在为歌手[" + singerName + "]写入song_index表...");
+			songManager.writeSingerSongIndexCollection(singerName, allSongsObjectIds);
+
+			// 速率控制
+			sleepCount++;
+			doSleepIfNeeded(sleepCount);
+	    }
+    }
+  
+
+	private void WriteSingerCollectionForNameCapital(NameCapital nameCapital) {
+		
+		List<String> singerIndexLines = fileHierarchyBulder.parseSingerIndexFile(nameCapital.getCapital());
+		if (singerIndexLines == null) {
+			ServerLog.warn(0,"Failed Writing singer collection for name capital: "+ nameCapital);
+			errorWritingSingerCollection.add(nameCapital + " : : ");
+			return;
+		}
+		
+		// 遍历该字母下的singer_index文件
+		int sleepCount = 0;
+		for (String line : singerIndexLines) {
+			SingerIndexLine singerIndexLine = new SingerIndexLine(line);
+			String singerName = singerIndexLine.getSingerName();
+			
+			ObjectId singerSongIndexOId = songManager.findSingerSongIndexOId(singerName);
+			
+			ServerLog.info(0, "*** 正在为歌手[" + singerName + "]写入singer表...");
+			songManager.writeSingerCollection(nameCapital.getCapital(), singerName, singerSongIndexOId);
+			
+			// 速率控制
+			sleepCount++;
+			doSleepIfNeeded(sleepCount);
+		}
+	}
+	
+	   
+    private void doSleepIfNeeded(int sleepCount) {
+    	
+		if (sleepCount % 10 == 0) {
+			try {
+				int sleep_interval_second = 2;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+    
 	private String nameCleaner(String name) {
 		String result;
 		result = name.replace("&#039;", "'");
@@ -135,6 +247,7 @@ public class DBAccessProxy {
 		
 		return result;
 	}
+	
 	
 	public void updateCategoryInfoForSong(Song song, String category, String subcategory) {
 		songManager.updateCategoryInfoForSong(song, category, subcategory);

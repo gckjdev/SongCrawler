@@ -20,20 +20,24 @@ public class MainCrawler {
 		PropertyConfiger.setSongsDirectory();
 		PropertyConfiger.setSongsDirectory();
 		
-		if ( crawlerType != null && crawlerType.equalsIgnoreCase("daily")) {
-		
-		} 
-		else if ( crawlerType != null &&  crawlerType.equalsIgnoreCase("oneshot")) {
-	    	OneShotCrawler.getInstance().crawlTheWholeWorld(startCapital, endCapital);
-		}
-		else if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
-    		DBAccessProxy.getInstance().writeAllSongsInfoToDB();
+		if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
+    		DBAccessProxy.getInstance().writeSongsInfoToDB(startCapital, endCapital);
+    		return;
     	} 
 		else if ( doCategorize != null &&Integer.parseInt(doCategorize) == 1 ) {
 			SongCategorizer.getInstance().categorizeAllSongs();
+			return;
+		}
+		else if ( crawlerType != null && crawlerType.equalsIgnoreCase("daily")) {
+			
+		} 
+		else if ( crawlerType != null &&  crawlerType.equalsIgnoreCase("oneshot")) {
+			OneShotCrawler.getInstance().crawlTheWholeWorld(startCapital, endCapital);
+			return;
 		}
 		else {
 			ServerLog.info(0, "You must specify a vaild crawler type or specify do_categorize !!!");
+			return;
 		}
 	}
 }
