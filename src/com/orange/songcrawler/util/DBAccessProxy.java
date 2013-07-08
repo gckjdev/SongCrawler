@@ -29,15 +29,15 @@ public class DBAccessProxy {
 	// 如果在解析singer_index就出错,　则条目格式为:　name capital :  :
 	// 如果在写入某个singer时出错,　则条目格式为:　　 name capital : singer :
 	// 如果在写入某首歌时出错,　则条目格式为:　       name capital : singer : song URL
-	private static List<String> errorWritingSongCollection = new ArrayList<>();
+	private static List<String> errorWritingSongCollection = new ArrayList<String>();
 	private static final String ERROR_WRITING_SONGS_LOG = fileHierarchyBulder.getErrorWritingSongsLog();
 	
 	// 用于记录写song_index表时出错的条目,　以便重新写入
-	private static List<String> errorWritingSongIndexCollection = new ArrayList<>();
+	private static List<String> errorWritingSongIndexCollection = new ArrayList<String>();
 	private static final String ERROR_WRITING_SONG_INDEX_LOG = fileHierarchyBulder.getErrorWritingSongIndexLog();
 	
 	// 用于记录写singer表时出错的条目,　以便重新写入
-	private static List<String> errorWritingSingerCollection = new ArrayList<>();
+	private static List<String> errorWritingSingerCollection = new ArrayList<String>();
 	private static final String ERROR_WRITING_SINGERS_LOG = fileHierarchyBulder.getErrorWritingSingersLog();
 		
 	private static final DBAccessProxy  oneInstance = new DBAccessProxy();
