@@ -88,7 +88,7 @@ public class SongCrawler {
 						NameCapital.valueOf(nameCapital).ordinal() > nameCapitalRange[1].ordinal())
 					// 不在范围内的跳过
 					continue;
-				if (updateAllSongs && new File(fileHierarchyBuilder.getSingerIndexFileName(nameCapital)).canRead()) {
+				if (!updateAllSongs && new File(fileHierarchyBuilder.getSingerIndexFileName(nameCapital)).canRead()) {
 					// 跳过已经抓取的首字母
 					ServerLog.info(0, "* 已存在，跳过写入歌手URL信息，首字母：" + nameCapital + "...");
 					continue;

@@ -14,8 +14,8 @@ public class ArgumentParser {
 		END_CAPITAL("end_capital"),     // 一次性爬虫抓取的字母范围的终点字母
 		WRITE_DB("write_db"),           // 把歌曲库写入数据库,1: 是，0：否
 		DO_CATEGORIZE("do_categorize"), // 抓取分类数据,1: 是，0：否
-		SONGS_DIR("songsDir"),          // 歌曲信息目录
-		SONG_CATEGORY_DIR("songCategoryDir"), // 分类信息目录 
+		SONGS_DIR("songs_dir"),          // 歌曲信息目录
+		SONG_CATEGORY_DIR("song_category_dir"), // 分类信息目录 
 		EXTRA_DB("extra_db"), // 生成额外的数据库表（singer表和singer_song_index表),1: 是，0：否
 		UPDATE_ALL_SONGS("update_all_songs"), // 更新整个歌曲库
 		;
