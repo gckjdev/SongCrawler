@@ -5,7 +5,8 @@
      1）通过百度音乐，从A到Z方式，抓取以该字母为名字首字母的所有歌手URL,保存到以该字母命名的目录下的singe_index文件
      2）遍历所有字母目录下的singer_index文件，抓取所有歌手的歌曲的URL,保存到以歌手名字命名的目录下的song_index文件
      3）遍历所有song_index文件，抓取所有歌曲的歌词， 保存到以歌曲名命名的文件下
-     4）在以上3步完成之后，写入数据库，生成song表， song_index表，singer表
+     4）在以上3步完成之后，写入数据库，生成song表
+     5）(可选,通过java命令行参数-Dextra_db控制,1生成，0不生成）生成song_index表，singer表
   
   1.2 分类信息
      1）通过百度音乐，抓取分类信息，写到song_category表中，同时更新song表的category字段，写入分类信息 
@@ -18,15 +19,15 @@
 
         表名: song
         作用: 歌曲元信息表
-        表项: name: 歌曲名
-              singer: 歌手名
-              album: 专辑(可选)
-              url: 歌曲链接
-              baidu_id: 百度编制的歌曲ID(url后面的数字,如http://music.baidu.com/artist/14791073中的14791073)
-              lyric: 歌词存放路径（本地路径）
+        表项: song_name: 歌曲名
+              song_author: 歌手名
+              song_album: 专辑(可选)
+              song_url: 歌曲链接
+              song_id: 歌曲ID，目前存放的是百度编制的歌曲ID(url后面的数字,如http://music.baidu.com/artist/14791073中的14791073)
+              song_lyric_path: 歌词存放路径（本地路径）
 
-	      major_category 字符串数组，大分类，如 [流行,80后]，对应song_category中的name
-	      minor_category 字符串数组，小分类，如 [爵士乐,忧伤]，对应song_category中的sub_name
+	      category 分类数组，数组项为:
+                  {大分类：小分类}
 
               hit: 歌曲热度(可选, 用于以后推荐等功能)
               singer_info: 暂时无用
@@ -34,7 +35,7 @@
         表名: song_category
         作用: 记录所有的分类及其子分类
         表项: category: 大分类名字，如"流行"
-　　　　　　　 sub_category: 子分类名字
+　　　　　　　sub_category: 子分类名字
               songs_data: 该分类下的歌曲数组，数组项为：
                   {歌曲名： 歌曲在song表中ObjectId}
 
