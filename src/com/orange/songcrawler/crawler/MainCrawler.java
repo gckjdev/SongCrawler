@@ -20,22 +20,26 @@ public class MainCrawler {
 					Arguments.END_CAPITAL.getValue());
 			return;
 		}
+		
 		// 把抓取的整个歌曲库信息写入数据库(该方法可中断重运行)
 		if (ArgumentParser.writeToDB()) {
     		DBAccessProxy.getInstance().writeSongsInfoToDB(Arguments.START_CAPITAL.getValue(),
 					Arguments.END_CAPITAL.getValue());
     		return;
     	}
-		// 抓取分类信息
+		
+		// 抓取分类信息(该方法可中断重运行)
 		if (ArgumentParser.doCategorize()) {
 			SongCategorizer.getInstance().categorizeAllSongs();
 			return;
 		}
+		
 		// 更新每天榜单
 		if (ArgumentParser.doDailyCrawl()) {
 			DailyCrawler.getInstance().crawlTopMusic();
 			return;
-		} 
+		}
+		
 		else {
 			ServerLog.info(0, "You must specify a vaild operation !!!");
 			return;

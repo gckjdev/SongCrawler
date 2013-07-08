@@ -13,6 +13,7 @@ import org.htmlparser.filters.AndFilter;
 import org.htmlparser.filters.HasAttributeFilter;
 import org.htmlparser.filters.NotFilter;
 import org.htmlparser.filters.TagNameFilter;
+import org.htmlparser.nodes.TagNode;
 import org.htmlparser.nodes.TextNode;
 import org.htmlparser.tags.LinkTag;
 import org.htmlparser.util.NodeList;
@@ -57,6 +58,9 @@ public class SongCategorizer {
 		}
 		
 		for (String line: lines) {
+			if (line.equals(""))
+				continue;  // 空行
+			
 			SongCategoryIndexLine categoryIndexLine = new SongCategoryIndexLine(line);
 			String category = categoryIndexLine.getCategory();
 			String subcategory = categoryIndexLine.getSubcategory();
@@ -65,7 +69,7 @@ public class SongCategorizer {
 			ServerLog.info(0, "* 正在抓取[" + category + " : " + subcategory +"]下的所有歌曲信息...");
 			crawlAllSongsForOneCategory(category, subcategory, subcategoryURL);
 			try {
-				int sleep_interval_second = 30;
+				int sleep_interval_second = 20;
 				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
 				Thread.sleep(sleep_interval_second * 1000);
 			} catch (InterruptedException e) {
@@ -84,7 +88,7 @@ public class SongCategorizer {
 			String url = subcategoryURL+"?start=" + (i*CATEGORY_SONG_PER_PAGE) + "&size=" + CATEGORY_SONG_PER_PAGE; 
 			songsInThisCategory.putAll(crawlSongsForOneCategoryPage(category, subcategory, url));
 			try {
-				int sleep_interval_second = 10;
+				int sleep_interval_second = 5;
 				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
 				Thread.sleep(sleep_interval_second * 1000);
 			} catch (InterruptedException e) {
@@ -129,6 +133,8 @@ public class SongCategorizer {
 					}
 					if (arg0 instanceof TextNode)
 						return true;
+					if (arg0 instanceof TagNode)
+						return true;
 					return false;
 				}
 			});
@@ -163,7 +169,8 @@ public class SongCategorizer {
 				
 				//　记下分类信息,　以便最后一并更新song_category表
 				for (Song song : songs) 
-					songsInThisCategory.put(songName, song.getObjectId().toString());
+					// 数据库中字段名不能含"."
+					songsInThisCategory.put(songName.replace(".", "_DOT_"), song.getObjectId().toString());
 			}
 		} catch (ParserException e) {
 			e.printStackTrace();

@@ -33,18 +33,18 @@ public class CrawlPolicy {
 
 	public static NameCapital[] dispatchNameCapitalRange(String startCapital, String endCapital) throws Exception {
 		
-		// 检查有无提供字母范围，否则中止程序！
+		// 检查有无提供字母范围，无则终止程序！
 		if (startCapital == null || endCapital == null) {
 			throw new Exception("You must provide start capital and end capital !!!");
 		}
 		
-		// 检查是否合格的字母，否则中止程序！
+		// 检查是否合格的字母，否则终止程序！
 		if (! Character.isUpperCase(startCapital.charAt(0)) ||
 				! Character.isUpperCase(endCapital.charAt(0)) ) {
 			throw new Exception("You must provide a valid capital range");
 		}
 		
-		// 检查start是否小于等于end, 否则中止程序！
+		// 检查start是否小于等于end, 否则终止程序！
 		if (NameCapital.valueOf(startCapital).ordinal() >
 				NameCapital.valueOf(endCapital).ordinal() ) {
 			throw new Exception("You must provide a valid capital range");
