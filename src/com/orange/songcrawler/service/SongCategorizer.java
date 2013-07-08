@@ -64,6 +64,13 @@ public class SongCategorizer {
 			
 			ServerLog.info(0, "* 正在抓取[" + category + " : " + subcategory +"]下的所有歌曲信息...");
 			crawlAllSongsForOneCategory(category, subcategory, subcategoryURL);
+			try {
+				int sleep_interval_second = 30;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 	
@@ -76,6 +83,13 @@ public class SongCategorizer {
 		for (int i = 0; i < CATEGORY_SONG_PAGE_NUM; i++) {
 			String url = subcategoryURL+"?start=" + (i*CATEGORY_SONG_PER_PAGE) + "&size=" + CATEGORY_SONG_PER_PAGE; 
 			songsInThisCategory.putAll(crawlSongsForOneCategoryPage(category, subcategory, url));
+			try {
+				int sleep_interval_second = 10;
+				ServerLog.info(0, "睡眠" + sleep_interval_second + "秒钟zzzZZZ~~~~~~");
+				Thread.sleep(sleep_interval_second * 1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 		
 		// 抓取该分类完成后，写入song_category表
