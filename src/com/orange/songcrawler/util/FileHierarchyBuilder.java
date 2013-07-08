@@ -8,10 +8,12 @@ import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 
+import com.orange.songcrawler.util.ArgumentParser.Arguments;
+
 public class FileHierarchyBuilder {
 	
-	private static final String SONGS_DIR = PropertyConfiger.getSongsDirectory();
-	private static final String SONG_CATEGORY_DIR = PropertyConfiger.getSongCategoryDirectory();
+	private static final String SONGS_DIR = Arguments.SONGS_DIR.getValue();
+	private static final String SONG_CATEGORY_DIR = Arguments.SONG_CATEGORY_DIR.getValue();
 	
 	private static int singerIndexFileHeaderLines = 5;
 	private static int songIndexFileHeaderLines = 5;

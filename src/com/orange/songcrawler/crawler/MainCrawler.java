@@ -3,45 +3,41 @@ package com.orange.songcrawler.crawler;
 
 import com.orange.common.log.ServerLog;
 import com.orange.songcrawler.service.SongCategorizer;
+import com.orange.songcrawler.util.ArgumentParser;
+import com.orange.songcrawler.util.ArgumentParser.Arguments;
 import com.orange.songcrawler.util.DBAccessProxy;
-import com.orange.songcrawler.util.PropertyConfiger;
 
 public class MainCrawler {
 
     public static void main(String[] args) throws Exception {
-    	   
-		String crawlerType = System.getProperty("crawler_type"); // daily or oneshot
-		String startCapital = System.getProperty("start_capital"); // see CrawlPolicy
-		String endCapital = System.getProperty("end_capital");
-		String doCategorize = System.getProperty("do_categorize"); // 1 or 0
-		String writeToDB = System.getProperty("write_db"); // 1 or 0
-		
-		PropertyConfiger.setRunCommand(); // 读取运行此程序的命令,　以便在抓取过程中可以重启运行本程序
-		PropertyConfiger.setSongsDirectory();
-		PropertyConfiger.setSongCategoryDirectory();
 		
 		// 一次性爬虫，抓取整个歌曲库
-		if ( crawlerType != null &&  crawlerType.equalsIgnoreCase("oneshot")) {
-			OneShotCrawler.getInstance().crawlTheWholeWorld(startCapital, endCapital);
+    	// Note:
+    	// 1. 该方法可断点续抓
+    	// 2. 可定期运行该方法更新整个歌曲库，只需多传入-Dupdate_all_songs=1,即可
+		if (ArgumentParser.doOneShotCrawl()) {
+			OneShotCrawler.getInstance().crawlTheWholeWorld(Arguments.START_CAPITAL.getValue(),
+					Arguments.END_CAPITAL.getValue());
 			return;
 		}
-		// 把抓取的整个歌曲库信息写入数据库
-		if (writeToDB != null && Integer.parseInt(writeToDB) == 1) {
-    		DBAccessProxy.getInstance().writeSongsInfoToDB(startCapital, endCapital);
+		// 把抓取的整个歌曲库信息写入数据库(该方法可中断重运行)
+		if (ArgumentParser.writeToDB()) {
+    		DBAccessProxy.getInstance().writeSongsInfoToDB(Arguments.START_CAPITAL.getValue(),
+					Arguments.END_CAPITAL.getValue());
     		return;
     	}
 		// 抓取分类信息
-		if ( doCategorize != null &&Integer.parseInt(doCategorize) == 1 ) {
+		if (ArgumentParser.doCategorize()) {
 			SongCategorizer.getInstance().categorizeAllSongs();
 			return;
 		}
 		// 更新每天榜单
-		if ( crawlerType != null && crawlerType.equalsIgnoreCase("daily")) {
+		if (ArgumentParser.doDailyCrawl()) {
 			DailyCrawler.getInstance().crawlTopMusic();
 			return;
 		} 
 		else {
-			ServerLog.info(0, "You must specify a vaild crawler type or specify do_categorize !!!");
+			ServerLog.info(0, "You must specify a vaild operation !!!");
 			return;
 		}
 	}

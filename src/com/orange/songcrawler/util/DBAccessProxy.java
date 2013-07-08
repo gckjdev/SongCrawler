@@ -52,11 +52,13 @@ public class DBAccessProxy {
 		// 第一步：把所有歌曲写入song表
 		writeSongsCollections(startCapital, endCapital);
 		
-		// 第二步（可选）：为所有歌手创建singer_song_index表
-//		writeSingerSongIndexCollections(startCapital, endCapital);
+		if (ArgumentParser.writeExtraDBCollection()) {
+			// 第二步（可选）：为所有歌手创建singer_song_index表
+		    writeSingerSongIndexCollections(startCapital, endCapital);
 		
-		// 第三步（可选）：为所有歌手创建singer表
-//		writeSingerCollections(startCapital, endCapital);
+		    // 第三步（可选）：为所有歌手创建singer表
+		    writeSingerCollections(startCapital, endCapital);
+		}
 	}
 
 
