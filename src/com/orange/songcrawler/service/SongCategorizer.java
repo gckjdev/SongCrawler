@@ -62,7 +62,7 @@ public class SongCategorizer {
 			String subcategory = categoryIndexLine.getSubcategory();
 			String subcategoryURL = categoryIndexLine.getSubcategoryURL();
 			
-			ServerLog.info(0, "* 正在抓取[" + category + " : " + subcategory +"]下的所有歌曲...");
+			ServerLog.info(0, "* 正在抓取[" + category + " : " + subcategory +"]下的所有歌曲信息...");
 			crawlAllSongsForOneCategory(category, subcategory, subcategoryURL);
 		}
 	}
@@ -78,7 +78,7 @@ public class SongCategorizer {
 			songsInThisCategory.putAll(crawlSongsForOneCategoryPage(category, subcategory, url));
 		}
 		
-		// 写入song_category表
+		// 抓取该分类完成后，写入song_category表
 		dbAccessProxy.writeSongCategoryCollection(category, subcategory, songsInThisCategory);
 	}
 	
@@ -210,13 +210,4 @@ public class SongCategorizer {
 		}
 	}
 
-	public static void main(String[] args) {
-		
-		SongCategorizer sc = SongCategorizer.getInstance();
-//		sc.categorizeAllSongs();
-		
-		sc.crawlSongsForOneCategoryPage("音乐心情", "伤感", "http://music.baidu.com/tag/%E4%BC%A4%E6%84%9F?start=50&size=50");
-		
-	}
-	
 }

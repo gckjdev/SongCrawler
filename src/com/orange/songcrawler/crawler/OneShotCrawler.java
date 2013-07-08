@@ -13,14 +13,13 @@ public class OneShotCrawler {
 		return crawler;
 	}
 	
+	private static final SongCrawler songCrawler = SongCrawler.getInstance();
 	
 	public void crawlTheWholeWorld(String startCapital, String endCapital) throws Exception {
 		
 		// 由自己所处哪台机器决定抓取什么首字母范围的歌手
       	NameCapital[] nameCapitalRange = CrawlPolicy.dispatchNameCapitalRange(startCapital, endCapital);
 		
-      	SongCrawler songCrawler = SongCrawler.getInstance();
-      	
 		//　第一步:　抓取指定范围歌手的URL
     	songCrawler.crawlSingersURLs(nameCapitalRange);
     	

@@ -53,10 +53,10 @@ public class DBAccessProxy {
 		writeSongsCollections(startCapital, endCapital);
 		
 		// 第二步（可选）：为所有歌手创建singer_song_index表
-		writeSingerSongIndexCollections(startCapital, endCapital);
+//		writeSingerSongIndexCollections(startCapital, endCapital);
 		
 		// 第三步（可选）：为所有歌手创建singer表
-		writeSingerCollections(startCapital, endCapital);
+//		writeSingerCollections(startCapital, endCapital);
 	}
 
 
@@ -183,7 +183,8 @@ public class DBAccessProxy {
 
 			List<SongObjectIdMap> allSongsObjectIds = new ArrayList<SongObjectIdMap>();
 			for (Song song : songs) {
-				allSongsObjectIds.add(new SongObjectIdMap(song.getSingerName(),song.getObjectId().toString()));
+				String songName = song.getSongName() == null ? "" : song.getSongName();
+				allSongsObjectIds.add(new SongObjectIdMap(songName,song.getObjectId().toString()));
 			}
 
 			ServerLog.info(0, "** 正在为歌手[" + singerName + "]写入song_index表...");
