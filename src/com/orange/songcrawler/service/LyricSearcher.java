@@ -26,8 +26,8 @@ public class LyricSearcher {
     private static final String XIAMI_SEARCH_URL = "http://www.xiami.com/web/search?";  
     private static final String LOGIN_URL = "http://www.xiami.com/web/login";  
     
-    private static final String EMAIL = "nasa4836@gmail.com";
-    private static final String PASSWORD = "lcx209237";
+    private static final String EMAIL = "drawlively@163.com";
+    private static final String PASSWORD = "gancheng";
 
 	private static Cookie[] cookies = null;
   
